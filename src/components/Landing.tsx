@@ -3,6 +3,7 @@ import { BsGraphUpArrow } from 'react-icons/bs';
 import { GiMuscleUp } from 'react-icons/gi';
 import Button from './ui/Button';
 import { Link } from 'react-router-dom';
+import heroImage from '../assets/hero.png';
 
 const LandingPage = () => {
   return (
@@ -110,7 +111,7 @@ const LandingPage = () => {
         />
       </div> */}
       <div className='flex justify-center items-center p-[30px]'>
-        <img src="https://i.postimg.cc/RhkhNRF3/hola.png" alt="" />
+        <img src={heroImage} alt="Health & Wellness" className="max-w-full h-auto" />
       </div>
     </div>
   );

@@ -1,9 +1,68 @@
 
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;0,800;1,200;1,300;1,400;1,500;1,600;1,700;1,800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 @import "tailwindcss";
 
+/* ================================
+   HEALIX - NATURAL WELLNESS THEME
+   Sage Green & Cream Palette
+   ================================ */
+
+/* CSS Custom Properties for Theme */
+:root {
+  /* Custom Palette from Image */
+  --color-cream: #F6F0D7;
+  --color-sage-light: #C8D5A7;
+  --color-sage: #9CA986;
+  --color-sage-dark: #7B8569;
+  --color-olive: #6B7456;
+  
+  /* Primary Colors - Sage Green (Calm, Nature, Wellness) */
+  --color-primary: #9CA986;
+  --color-primary-light: #C8D5A7;
+  --color-primary-dark: #7B8569;
+  
+  /* Secondary Colors - Deep Sage (Depth, Trust) */
+  --color-secondary: #7B8569;
+  --color-secondary-light: #9CA986;
+  --color-secondary-dark: #6B7456;
+  
+  /* Accent Colors - Cream & Earth Tones */
+  --color-accent: #F6F0D7;
+  --color-accent-dark: #E8DEC0;
+  --color-success: #9CA986;
+  --color-warning: #D4A574;
+  --color-error: #C17B6F;
+  
+  /* Light Theme Background Colors - Natural & Soft */
+  --bg-primary: #F6F0D7;
+  --bg-secondary: #FDFCF5;
+  --bg-tertiary: #EDE7D3;
+  --bg-card: #FFFFFF;
+  --bg-elevated: #F9F6EC;
+  
+  /* Text Colors - Natural & Readable */
+  --text-primary: #3D4434;
+  --text-secondary: #6B7456;
+  --text-muted: #9CA986;
+  
+  /* Border Colors - Soft & Subtle */
+  --border-primary: #C8D5A7;
+  --border-accent: #9CA986;
+  
+  /* Shadows with Sage Tint */
+  --shadow-sm: 0 2px 8px rgba(124, 133, 105, 0.08);
+  --shadow-md: 0 4px 16px rgba(124, 133, 105, 0.12);
+  --shadow-lg: 0 8px 32px rgba(124, 133, 105, 0.16);
+  --shadow-glow: 0 0 24px rgba(156, 169, 134, 0.25);
+}
+
 /* Global base styles */
+* {
+  letter-spacing: -0.02em;
+  box-sizing: border-box;
+}
+
 html {
   scroll-behavior: smooth;
 }
@@ -11,15 +70,67 @@ html {
 body {
   margin: 0;
   padding: 0;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  letter-spacing: -0.03em;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 50%, var(--bg-tertiary) 100%);
+  background-attachment: fixed;
+  color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
 }
 
-/* Apply letter spacing to all text elements */
-* {
-  letter-spacing: -0.03em;
+/* Animated gradient background */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at 20% 50%, rgba(200, 213, 167, 0.2) 0%, transparent 50%),
+              radial-gradient(circle at 80% 80%, rgba(156, 169, 134, 0.2) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: -1;
+  animation: gradient-shift 15s ease infinite;
+}
+
+@keyframes gradient-shift {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.05);
+  }
+}
+
+/* Custom scrollbar - Light Theme */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-elevated);
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--color-primary-light) 0%, var(--color-primary) 100%);
+  box-shadow: 0 0 8px rgba(156, 169, 134, 0.4);
+}
+
+/* Selection styles */
+::selection {
+  background: var(--color-sage-light);
+  color: var(--text-primary);
 }
 
 /* Infinite Marquee Animation */
@@ -49,68 +160,63 @@ body {
   }
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
-  transition: background 0.3s ease;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.3);
-}
-
-/* Markdown syntax highlighting for textarea */
+/* Markdown syntax highlighting */
 .markdown-textarea {
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  background: var(--bg-card);
+  color: var(--text-primary);
 }
 
-/* Markdown preview styles */
+/* Markdown preview styles - Dark Theme */
 .markdown-preview h1,
 .markdown-preview h2,
 .markdown-preview h3 {
-  margin: 8px 0 4px 0;
-  font-weight: bold;
+  margin: 12px 0 8px 0;
+  font-weight: 700;
+  color: var(--text-primary);
+  background: linear-gradient(135deg, var(--color-primary-light), var(--color-accent-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .markdown-preview ul,
 .markdown-preview ol {
-  margin: 4px 0;
-  padding-left: 20px;
+  margin: 8px 0;
+  padding-left: 24px;
+  color: var(--text-secondary);
 }
 
 .markdown-preview li {
-  margin: 2px 0;
+  margin: 4px 0;
 }
 
 .markdown-preview code {
-  background-color: rgba(0, 0, 0, 0.05);
-  padding: 2px 4px;
-  border-radius: 3px;
-  font-family: monospace;
+  background: var(--bg-elevated);
+  color: var(--color-sage-dark);
+  padding: 3px 6px;
+  border-radius: 6px;
+  font-family: 'Monaco', monospace;
+  font-size: 0.9em;
+  border: 1px solid var(--border-primary);
 }
 
 .markdown-preview blockquote {
-  border-left: 3px solid #ddd;
-  margin: 4px 0;
-  padding-left: 12px;
+  border-left: 4px solid var(--color-primary);
+  margin: 8px 0;
+  padding-left: 16px;
   font-style: italic;
-  color: rgba(44, 62, 80, 0.7);
+  color: var(--text-muted);
+  background: var(--bg-card);
+  padding: 12px 16px;
+  border-radius: 8px;
 }
-/* Smooth Animations for Diet Page */
+
+/* Enhanced Animations */
 @keyframes fade-in {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(20px);
   }
   to {
     opacity: 1;
@@ -121,7 +227,7 @@ body {
 @keyframes slide-in-right {
   from {
     opacity: 0;
-    transform: translateX(20px);
+    transform: translateX(30px);
   }
   to {
     opacity: 1;
@@ -132,35 +238,113 @@ body {
 @keyframes pulse-dot {
   0%, 100% {
     opacity: 1;
+    transform: scale(1);
   }
   50% {
-    opacity: 0.5;
+    opacity: 0.6;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(156, 169, 134, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(156, 169, 134, 0.5);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
   }
 }
 
 .animate-fade-in {
-  animation: fade-in 0.3s ease-out;
+  animation: fade-in 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .animate-slide-in {
-  animation: slide-in-right 0.3s ease-out;
+  animation: slide-in-right 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .animate-pulse-dot {
   animation: pulse-dot 2s ease-in-out infinite;
 }
 
-/* Smooth transitions for interactive elements */
-.transition-smooth {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+.animate-glow {
+  animation: glow-pulse 3s ease-in-out infinite;
 }
 
-/* Card hover effects */
+/* Smooth transitions */
+.transition-smooth {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Premium card hover effects */
 .card-hover {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
 }
 
 .card-hover:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: var(--shadow-glow);
+  border-color: var(--color-primary);
+}
+
+/* Glass morphism effect */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(200, 213, 167, 0.3);
+  box-shadow: var(--shadow-md);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, var(--color-sage), var(--color-sage-dark));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Button glow effect */
+.btn-glow {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-glow::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.btn-glow:hover::before {
+  width: 300px;
+  height: 300px;
+}
+
+/* Loading shimmer effect */
+.shimmer {
+  background: linear-gradient(90deg, 
+    var(--bg-card) 0%, 
+    var(--bg-elevated) 50%, 
+    var(--bg-card) 100%);
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite;
 }
