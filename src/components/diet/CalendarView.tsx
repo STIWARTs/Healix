@@ -1,0 +1,631 @@
+/**
+ * CalendarView Component
+ * Interactive calendar showing diet tracking data by day
+ */
+
+import React, { useState, useEffect, useCallback } from 'react';
+import { ChevronLeft, ChevronRight, X, Flame, Droplet, Apple, Loader2, Sparkles, TrendingUp, AlertCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import Button from '../ui/Button';
+import { getDietEntriesByDate, getUserDietEntries } from '../../services/dietEntryService';
+import { getUserHabits } from '../../services/habitsService';
+import { generateDaySummary, generateFallbackSummary, DaySummaryData } from '../../services/aiSummaryService';
+import { getDailySummaries, getDailySummaryByDate } from '../../services/dailySummaryService';
+import { DailySummary } from '../../types/dailySummary';
+import { DietEntry } from '../../types/dietEntry';
+import { Habit } from '../../types/habits';
+
+const CalendarView: React.FC = () => {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [datesWithData, setDatesWithData] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [dayDetails, setDayDetails] = useState<{
+    summary: DailySummary;
+    entries: DietEntry[];
+    habits: Habit[];
+    aiSummary?: string;
+    insights?: string[];
+  } | null>(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadMonthData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentDate]);
+
+  const loadMonthData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+
+      // Calculate first and last day of month
+      const firstDay = new Date(year, month, 1).toISOString().split('T')[0];
+      const lastDay = new Date(year, month + 1, 0).toISOString().split('T')[0];
+
+      const datesSet = new Set<string>();
+
+      // Get all entries for the month to check which dates have data
+      const [entriesResult, summariesResult] = await Promise.all([
+        getUserDietEntries(firstDay + 'T00:00:00', lastDay + 'T23:59:59'),
+        getDailySummaries(firstDay, lastDay)
+      ]);
+
+      // Add dates from diet entries
+      if (entriesResult.success && entriesResult.data) {
+        entriesResult.data.forEach(entry => {
+          // For meals, use meal_date. For water, use created_at date
+          let entryDate: string;
+          if (entry.entry_type === 'meal' && entry.meal_date) {
+            entryDate = entry.meal_date;
+          } else {
+            entryDate = entry.created_at.split('T')[0];
+          }
+          datesSet.add(entryDate);
+        });
+      }
+
+      // Add dates from daily summaries
+      if (summariesResult.success && summariesResult.data) {
+        summariesResult.data.forEach(summary => {
+          datesSet.add(summary.date);
+        });
+      }
+
+      if (!entriesResult.success && !summariesResult.success) {
+        setError('Failed to load calendar data');
+      }
+
+      setDatesWithData(datesSet);
+    } catch (error) {
+      console.error('Error loading month data:', error);
+      setError('An unexpected error occurred while loading calendar data');
+    } finally {
+      setLoading(false);
+    }
+  }, [currentDate]);
+
+  const handleDayClick = useCallback(async (dateStr: string) => {
+    // Check if this date has data
+    if (!datesWithData.has(dateStr)) {
+      return;
+    }
+
+    setSelectedDay(dateStr);
+    setLoadingDetails(true);
+    setDayDetails(null);
+    setError(null);
+
+    try {
+      // First try to get data from daily_summaries
+      const summaryResult = await getDailySummaryByDate(dateStr);
+      
+      // Also fetch full day details from entries
+      const [entriesResult, habitsResult] = await Promise.all([
+        getDietEntriesByDate(dateStr),
+        getUserHabits(),
+      ]);
+
+      const entries = entriesResult.success ? entriesResult.data || [] : [];
+      const allHabits = habitsResult.success ? habitsResult.data || [] : [];
+
+      // Filter habits completed on this day
+      const habits = allHabits.filter(habit => {
+        if (!habit.is_completed || !habit.completed_at) return false;
+        const completedDate = new Date(habit.completed_at).toISOString().split('T')[0];
+        return completedDate === dateStr;
+      });
+
+      let summary: DailySummary;
+      
+      // Use daily_summaries data if available, otherwise calculate from entries
+      if (summaryResult.success && summaryResult.data) {
+        summary = summaryResult.data;
+      } else {
+        // Calculate totals from entries
+        let totalCalories = 0, totalProtein = 0, totalCarbs = 0, totalFat = 0, waterIntake = 0, mealCount = 0;
+
+        entries.forEach(entry => {
+          if (entry.entry_type === 'water' && entry.water_amount) {
+            waterIntake += entry.water_amount;
+          } else if (entry.entry_type === 'meal' && entry.nutrition) {
+            totalCalories += entry.nutrition.calories || 0;
+            totalProtein += entry.nutrition.protein || 0;
+            totalCarbs += entry.nutrition.carbs || 0;
+            totalFat += entry.nutrition.fat || 0;
+            mealCount++;
+          }
+        });
+
+        // Calculate calories burned
+        let caloriesBurned = 0, habitCount = 0;
+        habits.forEach(habit => {
+          caloriesBurned += habit.calories_burned || 0;
+          habitCount++;
+        });
+
+        // Create summary object
+        summary = {
+          id: '',
+          user_id: '',
+          date: dateStr,
+          total_calories: totalCalories,
+          total_protein: totalProtein,
+          total_carbs: totalCarbs,
+          total_fat: totalFat,
+          water_intake: waterIntake,
+          calories_burned: caloriesBurned,
+          meal_count: mealCount,
+          habit_count: habitCount,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        // Double-check if there's any data
+        if (mealCount === 0 && waterIntake === 0 && habitCount === 0) {
+          setLoadingDetails(false);
+          setSelectedDay(null);
+          return;
+        }
+      }
+
+      // Generate AI summary with fallback
+      const summaryData: DaySummaryData = {
+        date: dateStr,
+        entries,
+        habits,
+        totalCalories: summary.total_calories || 0,
+        totalProtein: summary.total_protein || 0,
+        totalCarbs: summary.total_carbs || 0,
+        totalFat: summary.total_fat || 0,
+        waterIntake: summary.water_intake || 0,
+        caloriesBurned: summary.calories_burned || 0,
+      };
+
+      // Use fallback summary immediately for demo purposes
+      const fallback = generateFallbackSummary(summaryData);
+      setDayDetails({
+        summary,
+        entries,
+        habits,
+        aiSummary: fallback.summary,
+        insights: fallback.insights,
+      });
+    } catch (error) {
+      console.error('Error loading day details:', error);
+      setError('Failed to load day details');
+    } finally {
+      setLoadingDetails(false);
+    }
+  }, [datesWithData]);
+
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+  ];
+
+  const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  const previousMonth = useCallback(() => {
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1));
+  }, [currentDate]);
+
+  const nextMonth = useCallback(() => {
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1));
+  }, [currentDate]);
+
+  const isToday = (dateStr: string) => {
+    const today = new Date().toISOString().split('T')[0];
+    return dateStr === today;
+  };
+
+  const getDaysInMonth = () => {
+    return new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
+  };
+
+  const getFirstDayOfMonth = () => {
+    return new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay();
+  };
+
+  const renderCalendar = () => {
+    const daysInMonth = getDaysInMonth();
+    const firstDay = getFirstDayOfMonth();
+    const days = [];
+
+    // Empty cells before month starts
+    for (let i = 0; i < firstDay; i++) {
+      days.push(<div key={`empty-${i}`} className="h-24"></div>);
+    }
+
+    // Days of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const today = isToday(dateStr);
+      const hasData = datesWithData.has(dateStr);
+
+      days.push(
+        <motion.div
+          key={day}
+          onClick={() => hasData && handleDayClick(dateStr)}
+          className="relative group h-24"
+          whileHover={{ scale: hasData ? 1.02 : 1 }}
+          whileTap={{ scale: hasData ? 0.98 : 1 }}
+        >
+          <div
+            className={`
+              relative w-full h-full flex flex-col items-center justify-center rounded-xl transition-all duration-200
+              ${today
+                ? 'border-2 border-gray-600 bg-gray-100 font-semibold cursor-pointer shadow-md'
+                : hasData
+                  ? 'bg-gray-50 hover:bg-gray-100 border border-gray-200 cursor-pointer hover:shadow-lg'
+                  : 'border border-gray-100 cursor-not-allowed opacity-40'
+              }
+            `}
+          >
+            <span className={`text-base font-medium ${today ? 'text-gray-900' : hasData ? 'text-gray-800' : 'text-gray-400'}`}>
+              {day}
+            </span>
+
+            {hasData && (
+              <div className="mt-1 flex items-center gap-1">
+                <div className="w-1.5 h-1.5 bg-gray-600 rounded-full"></div>
+                <div className="w-1.5 h-1.5 bg-gray-600 rounded-full"></div>
+                <div className="w-1.5 h-1.5 bg-gray-600 rounded-full"></div>
+              </div>
+            )}
+          </div>
+        </motion.div>
+      );
+    }
+
+    return days;
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6 }}
+      className="space-y-6"
+    >
+      {/* Error Display */}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 shadow-sm"
+          >
+            <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-red-800">Error</p>
+              <p className="text-sm text-red-700 mt-1">{error}</p>
+            </div>
+            <button
+              onClick={() => setError(null)}
+              className="ml-auto text-red-400 hover:text-red-600 transition-colors"
+              aria-label="Dismiss error"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Calendar Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="bg-white rounded-2xl border border-gray-200 shadow-lg p-8"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <Button
+              onClick={previousMonth}
+              variant="secondary"
+              className="p-3 rounded-xl hover:bg-gray-100 transition-colors w-auto h-auto"
+            >
+              <ChevronLeft className="w-5 h-5 text-gray-600" />
+            </Button>
+          </motion.div>
+
+          <div className="text-center">
+            <motion.h2
+              key={`${currentDate.getMonth()}-${currentDate.getFullYear()}`}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="text-2xl font-semibold text-gray-900"
+            >
+              {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
+            </motion.h2>
+            <p className="text-sm text-gray-500 mt-1">Track your daily nutrition progress</p>
+          </div>
+
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <Button
+              onClick={nextMonth}
+              variant="secondary"
+              className="p-3 rounded-xl hover:bg-gray-100 transition-colors w-auto h-auto"
+            >
+              <ChevronRight className="w-5 h-5 text-gray-600" />
+            </Button>
+          </motion.div>
+        </div>
+
+        {/* Calendar Grid */}
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-12 space-y-3">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+            <p className="text-sm text-gray-500">Loading calendar data...</p>
+          </div>
+        ) : (
+          <>
+            {/* Day headers */}
+            <div className="grid grid-cols-7 gap-3 mb-4">
+              {daysOfWeek.map((day) => (
+                <div key={day} className="text-center text-sm font-semibold text-gray-600 py-3 bg-gray-50 rounded-lg">
+                  {day}
+                </div>
+              ))}
+            </div>
+
+            {/* Calendar days */}
+            <div className="grid grid-cols-7 gap-3">
+              {renderCalendar()}
+            </div>
+          </>
+        )}
+
+        {/* Legend */}
+        <div className="mt-8 pt-6 border-t border-gray-100">
+          <h4 className="text-sm font-semibold text-gray-900 mb-4">Legend</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+              <div className="w-4 h-4 rounded-lg border-2 border-gray-600 bg-gray-100"></div>
+              <div>
+                <span className="text-sm font-medium text-gray-900">Today</span>
+                <p className="text-xs text-gray-500">Current date</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+              <div className="w-4 h-4 rounded-lg bg-gray-50 border border-gray-200 flex items-center justify-center">
+                <div className="flex gap-0.5">
+                  <div className="w-1 h-1 bg-gray-600 rounded-full"></div>
+                  <div className="w-1 h-1 bg-gray-600 rounded-full"></div>
+                  <div className="w-1 h-1 bg-gray-600 rounded-full"></div>
+                </div>
+              </div>
+              <div>
+                <span className="text-sm font-medium text-gray-900">Has Data</span>
+                <p className="text-xs text-gray-500">Logged entries</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+              <div className="w-4 h-4 rounded-lg border border-gray-100 opacity-50"></div>
+              <div>
+                <span className="text-sm font-medium text-gray-900">No Data</span>
+                <p className="text-xs text-gray-500">No entries</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Day Details Modal */}
+      {selectedDay && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+            className="bg-white rounded-2xl shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto"
+          >
+            {/* Modal Header */}
+            <div className="sticky top-0 bg-white border-b border-gray-200 p-8 flex items-center justify-between z-10">
+              <div>
+                <h3 className="text-3xl font-semibold text-gray-900">
+                  {new Date(selectedDay).toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    month: 'long',
+                    day: 'numeric',
+                    year: 'numeric'
+                  })}
+                </h3>
+                <p className="text-sm text-gray-500 mt-2">Detailed nutrition and activity summary</p>
+              </div>
+              <Button
+                onClick={() => {
+                  setSelectedDay(null);
+                  setDayDetails(null);
+                }}
+                variant="secondary"
+                className="p-3 hover:bg-gray-100 rounded-xl transition-colors w-auto h-auto"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </Button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-8 space-y-8">
+              {loadingDetails ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+                  <p className="text-sm text-gray-500 ml-3">Generating AI summary...</p>
+                </div>
+              ) : dayDetails ? (
+                <>
+                  {/* AI Summary */}
+                  {dayDetails.aiSummary && (
+                    <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="p-2 rounded-lg bg-gray-600">
+                          <Sparkles className="w-5 h-5 text-white" />
+                        </div>
+                        <h4 className="text-lg font-semibold text-gray-900">AI Summary</h4>
+                      </div>
+                      <p className="text-gray-700 leading-relaxed text-base">{dayDetails.aiSummary}</p>
+                    </div>
+                  )}
+
+                  {/* Insights */}
+                  {dayDetails.insights && dayDetails.insights.length > 0 && (
+                    <div>
+                      <h4 className="text-lg font-semibold text-gray-900 mb-4">Key Insights</h4>
+                      <div className="space-y-3">
+                        {dayDetails.insights.map((insight, index) => (
+                          <div key={index} className="flex items-start gap-3 bg-gray-50 rounded-lg p-4">
+                            <div className="p-1.5 rounded-lg bg-gray-600 mt-0.5 shrink-0">
+                              <TrendingUp className="w-4 h-4 text-white" />
+                            </div>
+                            <p className="text-sm text-gray-700 leading-relaxed">{insight}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Stats Overview */}
+                  <div>
+                    <h4 className="text-lg font-semibold text-gray-900 mb-6">Nutrition Overview</h4>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="p-2 rounded-lg bg-gray-600">
+                            <Flame className="w-4 h-4 text-white" />
+                          </div>
+                          <span className="text-sm font-medium text-gray-600">Calories</span>
+                        </div>
+                        <p className="text-3xl font-bold text-gray-900">
+                          {dayDetails.summary.total_calories}
+                        </p>
+                      </div>
+                      <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="p-2 rounded-lg bg-gray-600">
+                            <Droplet className="w-4 h-4 text-white" />
+                          </div>
+                          <span className="text-sm font-medium text-gray-600">Water</span>
+                        </div>
+                        <p className="text-3xl font-bold text-gray-900">
+                          {dayDetails.summary.water_intake}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">cups</p>
+                      </div>
+                      <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="p-2 rounded-lg bg-gray-600">
+                            <Apple className="w-4 h-4 text-white" />
+                          </div>
+                          <span className="text-sm font-medium text-gray-600">Protein</span>
+                        </div>
+                        <p className="text-3xl font-bold text-gray-900">
+                          {dayDetails.summary.total_protein}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">grams</p>
+                      </div>
+                      <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="p-2 rounded-lg bg-gray-600">
+                            <Flame className="w-4 h-4 text-white" />
+                          </div>
+                          <span className="text-sm font-medium text-gray-600">Burned</span>
+                        </div>
+                        <p className="text-3xl font-bold text-gray-900">
+                          {dayDetails.summary.calories_burned}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">calories</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Meals List */}
+                  {dayDetails.entries.filter(e => e.entry_type === 'meal').length > 0 && (
+                    <div>
+                      <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-gray-600">
+                          <Apple className="w-4 h-4 text-white" />
+                        </div>
+                        Meals ({dayDetails.entries.filter(e => e.entry_type === 'meal').length})
+                      </h4>
+                      <div className="space-y-3">
+                        {dayDetails.entries
+                          .filter(e => e.entry_type === 'meal')
+                          .map((entry) => (
+                            <div key={entry.id} className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="font-semibold text-gray-900 capitalize">
+                                  {entry.meal_type}
+                                </span>
+                                {entry.nutrition && (
+                                  <span className="text-sm text-gray-600 font-medium">
+                                    {entry.nutrition.calories} cal
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm text-gray-600 mb-3">{entry.meal_description}</p>
+                              {entry.nutrition && (
+                                <div className="flex items-center gap-6 text-xs text-gray-500">
+                                  <span>Protein: {entry.nutrition.protein}g</span>
+                                  <span>Carbs: {entry.nutrition.carbs}g</span>
+                                  <span>Fat: {entry.nutrition.fat}g</span>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Habits List */}
+                  {dayDetails.habits.length > 0 && (
+                    <div>
+                      <h4 className="text-lg font-semibold text-gray-900 mb-4">
+                        Completed Habits ({dayDetails.habits.length})
+                      </h4>
+                      <div className="space-y-3">
+                        {dayDetails.habits.map((habit) => (
+                          <div key={habit.id} className="bg-gray-50 rounded-xl p-4 border border-gray-200 flex items-center justify-between">
+                            <span className="text-sm text-gray-700 font-medium">{habit.description}</span>
+                            {habit.calories_burned && (
+                              <span className="text-sm text-gray-600 font-medium flex items-center gap-2">
+                                <div className="p-1 rounded-lg bg-gray-600">
+                                  <Flame className="w-3 h-3 text-white" />
+                                </div>
+                                {habit.calories_burned} cal
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="text-center text-gray-500 py-12">No data available</p>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </motion.div>
+  );
+};
+
+export default CalendarView;
