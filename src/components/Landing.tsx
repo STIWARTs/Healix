@@ -111,7 +111,11 @@ const LandingPage = () => {
         />
       </div> */}
       <div className='flex justify-center items-center p-[30px]'>
-        <img src={heroImage} alt="Health & Wellness" className="max-w-full h-auto" />
+        <img 
+          src={heroImage} 
+          alt="Health & Wellness" 
+          className="max-w-md w-full h-auto opacity-80" 
+        />
       </div>
     </div>
   );
