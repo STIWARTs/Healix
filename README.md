@@ -275,17 +275,31 @@ Visit `http://localhost:5173` to see Healix in action! 🎉
 
 <div align="center">
 
-### Dashboard
-*Beautiful overview of your health stats and AI-powered suggestions*
+### 🏠 Landing Page
+*AI-powered nutrition platform with beautiful sage & cream wellness theme*
 
-### Food Scanner
-*Instant nutritional analysis from food photos using Gemini Vision*
+<img src="src/assets/screenshots/landing-page.png" alt="Healix Landing Page" width="800"/>
 
-### Health Tracker Calendar
-*Visual tracking of your daily nutrition and habits*
+---
 
-### Epigenetic Report Analyzer
-*Upload health reports and chat with AI about your results*
+### 📸 Smart Food Scanner
+*Instant nutritional analysis from food photos using Gemini Vision AI*
+
+<img src="src/assets/screenshots/food-scanner.png" alt="Food Scanner with AI Analysis" width="800"/>
+
+---
+
+### 📊 Health Tracker Dashboard
+*Visual tracking of daily nutrition, calories, and wellness metrics*
+
+<img src="src/assets/screenshots/tracker-dashboard.png" alt="Health Tracker Dashboard" width="800"/>
+
+---
+
+### 🧬 Epigenetic Report Analyzer
+*Upload health reports and chat with AI for personalized insights*
+
+<img src="src/assets/screenshots/epigenetic-analyzer.png" alt="Epigenetic Report Analyzer" width="800"/>
 
 </div>
 
