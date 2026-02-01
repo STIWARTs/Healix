@@ -17,6 +17,22 @@
 
 ---
 
+## 🎥 Demo Video
+
+<div align="center">
+
+### 📹 Watch Healix in Action!
+
+[![Healix Demo Video](https://img.youtube.com/vi/76upq827758/maxresdefault.jpg)](https://www.youtube.com/watch?v=76upq827758)
+
+**Click the thumbnail above to watch the full demo on YouTube!**
+
+🔗 **Direct Link**: [Watch on YouTube](https://www.youtube.com/watch?v=76upq827758)
+
+</div>
+
+---
+
 ## 🌟 Overview
 
 **Healix** is an intelligent health and wellness platform built on the **Google Cloud ecosystem**, leveraging Gemini AI, Firebase, Vertex AI, and Antigravity to provide personalized nutrition tracking, epigenetic health report analysis, and real-time wellness coaching. Built for the **MLH Gemini Build Hackathon 2026**, Healix transforms how users understand and manage their health data through cutting-edge Google technologies.
